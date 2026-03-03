@@ -6,9 +6,10 @@
 // Usage:
 //
 //	client := toq.Connect("")
-//	resp, _ := client.Send("toq://peer.com/agent", "hello")
+//	resp, _ := client.Send("toq://peer.com/agent", "hello", nil)
 //
-//	for msg := range client.Messages() {
+//	msgs, _ := client.Messages()
+//	for msg := range msgs {
 //	    msg.Reply("got it")
 //	}
 package toq
