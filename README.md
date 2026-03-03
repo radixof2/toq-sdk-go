@@ -48,6 +48,7 @@ func main() {
 | `Messages()` | Stream incoming messages (channel) |
 | `CancelMessage(id)` | Cancel a sent message |
 | `SendStreaming(to, text)` | Streaming delivery |
+| `GetThread(threadId)` | Get messages in a thread |
 | `Peers()` | List known peers |
 | `Block(key)` / `Unblock(key)` | Block/unblock an agent |
 | `Approvals()` | List pending approvals |
