@@ -63,7 +63,7 @@ func (m *Message) Reply(text string) (map[string]interface{}, error) {
 type SendOptions struct {
 	ThreadID string
 	ReplyTo  string
-	Wait     bool
+	Wait     *bool
 	Timeout  int
 }
 
@@ -142,10 +142,11 @@ func (c *Client) Send(to, text string, opts *SendOptions) (map[string]interface{
 	wait := true
 	timeout := 30
 	if opts != nil {
-		wait = opts.Wait
-		timeout = opts.Timeout
-		if timeout == 0 {
-			timeout = 30
+		if opts.Wait != nil {
+			wait = *opts.Wait
+		}
+		if opts.Timeout != 0 {
+			timeout = opts.Timeout
 		}
 	}
 	path := fmt.Sprintf("/v1/messages?wait=%t&timeout=%d", wait, timeout)
@@ -203,6 +204,13 @@ func (c *Client) CancelMessage(messageID string) error {
 func (c *Client) SendStreaming(to, text string) (map[string]interface{}, error) {
 	body := map[string]interface{}{"to": to, "body": map[string]string{"text": text}}
 	return c.jsonRequest("POST", "/v1/messages/stream", body)
+}
+
+// ── Threads ─────────────────────────────────────────────
+
+// GetThread returns messages in a thread.
+func (c *Client) GetThread(threadID string) (map[string]interface{}, error) {
+	return c.jsonRequest("GET", "/v1/threads/"+threadID, nil)
 }
 
 // ── Peers ───────────────────────────────────────────────
@@ -341,3 +349,6 @@ func (c *Client) listField(method, path, field string) ([]interface{}, error) {
 	}
 	return nil, nil
 }
+
+// Bool returns a pointer to a bool value. Useful for SendOptions.Wait.
+func Bool(v bool) *bool { return &v }
