@@ -217,19 +217,19 @@ func (c *Client) GetThread(threadID string) (map[string]interface{}, error) {
 // ── Peers ───────────────────────────────────────────────
 
 func (c *Client) Peers() ([]interface{}, error)    { return c.listField("GET", "/v1/peers", "peers") }
-func (c *Client) Block(publicKey string) error      { return c.do("POST", "/v1/peers/"+publicKey+"/block") }
-func (c *Client) Unblock(publicKey string) error    { return c.do("DELETE", "/v1/peers/"+publicKey+"/block") }
+func (c *Client) Block(publicKey string) error      { return c.do("POST", "/v1/peers/"+url.PathEscape(publicKey)+"/block") }
+func (c *Client) Unblock(publicKey string) error    { return c.do("DELETE", "/v1/peers/"+url.PathEscape(publicKey)+"/block") }
 
 // ── Approvals ───────────────────────────────────────────
 
 func (c *Client) Approvals() ([]interface{}, error) { return c.listField("GET", "/v1/approvals", "approvals") }
 
 func (c *Client) Approve(id string) error {
-	return c.do2("POST", "/v1/approvals/"+id, map[string]string{"decision": "approve"})
+	return c.do2("POST", "/v1/approvals/"+url.PathEscape(id), map[string]string{"decision": "approve"})
 }
 
 func (c *Client) Deny(id string) error {
-	return c.do2("POST", "/v1/approvals/"+id, map[string]string{"decision": "deny"})
+	return c.do2("POST", "/v1/approvals/"+url.PathEscape(id), map[string]string{"decision": "deny"})
 }
 
 // ── Discovery ───────────────────────────────────────────
