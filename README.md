@@ -58,6 +58,7 @@ func main() {
 | `Status()` / `Health()` | Daemon status |
 | `Shutdown(graceful)` | Stop the daemon |
 | `Logs()` / `ClearLogs()` | Read/clear logs |
+| `FollowLogs()` | Stream logs in real time (channel) |
 | `Diagnostics()` / `CheckUpgrade()` | Diagnostics |
 | `RotateKeys()` | Rotate identity keys |
 | `ExportBackup(passphrase)` | Create encrypted backup |
