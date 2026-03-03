@@ -263,6 +263,32 @@ func (c *Client) Health() (string, error) {
 func (c *Client) Status() (map[string]interface{}, error)      { return c.jsonRequest("GET", "/v1/status", nil) }
 func (c *Client) Shutdown(graceful bool) error                  { return c.do2("POST", "/v1/daemon/shutdown", map[string]bool{"graceful": graceful}) }
 func (c *Client) Logs() ([]interface{}, error)                  { return c.listField("GET", "/v1/logs", "entries") }
+
+// FollowLogs streams log entries in real time via SSE.
+func (c *Client) FollowLogs() (<-chan map[string]interface{}, error) {
+	resp, err := c.request("GET", "/v1/logs?follow=true", nil)
+	if err != nil {
+		return nil, err
+	}
+	ch := make(chan map[string]interface{})
+	go func() {
+		defer resp.Body.Close()
+		defer close(ch)
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if !strings.HasPrefix(line, "data: ") {
+				continue
+			}
+			var entry map[string]interface{}
+			if err := json.Unmarshal([]byte(line[6:]), &entry); err != nil {
+				continue
+			}
+			ch <- entry
+		}
+	}()
+	return ch, nil
+}
 func (c *Client) ClearLogs() error                              { return c.do("DELETE", "/v1/logs") }
 func (c *Client) Diagnostics() (map[string]interface{}, error)  { return c.jsonRequest("GET", "/v1/diagnostics", nil) }
 func (c *Client) CheckUpgrade() (map[string]interface{}, error) { return c.jsonRequest("GET", "/v1/upgrade/check", nil) }
