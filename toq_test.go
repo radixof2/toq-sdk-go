@@ -236,3 +236,93 @@ func TestNon200ReturnsError(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+
+func TestSendCloseThread(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"id":"m1","status":"delivered","thread_id":"t1","timestamp":"now"}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.Send("toq://host/agent", "goodbye", &SendOptions{CloseThread: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["status"] != "delivered" {
+		t.Errorf("expected delivered, got %v", result["status"])
+	}
+}
+
+func TestSendMulti(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"results":[{"to":"toq://host/a","id":"m1","thread_id":"t1","status":"queued"},{"to":"toq://host/b","id":"m2","thread_id":"t2","status":"queued"}],"timestamp":"now"}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.SendMulti([]string{"toq://host/a", "toq://host/b"}, "hello both", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	results, ok := result["results"].([]interface{})
+	if !ok || len(results) != 2 {
+		t.Errorf("expected 2 results, got %v", result["results"])
+	}
+}
+
+func TestStreamStart(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/stream/start" {
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"stream_id":"s1","thread_id":"t1"}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.StreamStart("toq://host/agent", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["stream_id"] != "s1" {
+		t.Errorf("expected s1, got %v", result["stream_id"])
+	}
+}
+
+func TestStreamChunk(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"chunk_id":"c1"}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.StreamChunk("s1", "hello ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["chunk_id"] != "c1" {
+		t.Errorf("expected c1, got %v", result["chunk_id"])
+	}
+}
+
+func TestStreamEnd(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"chunk_id":"e1"}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.StreamEnd("s1", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["chunk_id"] != "e1" {
+		t.Errorf("expected e1, got %v", result["chunk_id"])
+	}
+}
