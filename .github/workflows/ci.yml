@@ -20,6 +20,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.93.1"
-      - run: cargo install toq-cli
+      - run: cargo install toq-cli --version "0.1.0-dev.1"
       - run: go vet ./...
       - run: go test -v ./...
