@@ -62,10 +62,11 @@ func (m *Message) Reply(text string) (map[string]interface{}, error) {
 
 // SendOptions are optional parameters for Send.
 type SendOptions struct {
-	ThreadID string
-	ReplyTo  string
-	Wait     *bool
-	Timeout  int
+	ThreadID    string
+	ReplyTo     string
+	CloseThread bool
+	Wait        *bool
+	Timeout     int
 }
 
 // Connect creates a new Client to the local toq daemon.
@@ -139,6 +140,9 @@ func (c *Client) Send(to, text string, opts *SendOptions) (map[string]interface{
 		if opts.ReplyTo != "" {
 			body["reply_to"] = opts.ReplyTo
 		}
+		if opts.CloseThread {
+			body["close_thread"] = true
+		}
 	}
 	wait := true
 	timeout := 30
@@ -191,20 +195,52 @@ func (c *Client) Messages() (<-chan Message, error) {
 	return ch, nil
 }
 
-// CancelMessage cancels a sent message.
-func (c *Client) CancelMessage(messageID string) error {
-	resp, err := c.request("POST", "/v1/messages/"+messageID+"/cancel", nil)
-	if err != nil {
-		return err
+// SendMulti sends the same message to multiple agents, each on its own thread.
+func (c *Client) SendMulti(to []string, text string, opts *SendOptions) (map[string]interface{}, error) {
+	body := map[string]interface{}{"to": to, "body": map[string]string{"text": text}}
+	if opts != nil {
+		if opts.ThreadID != "" {
+			body["thread_id"] = opts.ThreadID
+		}
+		if opts.CloseThread {
+			body["close_thread"] = true
+		}
 	}
-	resp.Body.Close()
-	return nil
+	wait := true
+	timeout := 30
+	if opts != nil {
+		if opts.Wait != nil {
+			wait = *opts.Wait
+		}
+		if opts.Timeout != 0 {
+			timeout = opts.Timeout
+		}
+	}
+	path := fmt.Sprintf("/v1/messages?wait=%t&timeout=%d", wait, timeout)
+	return c.jsonRequest("POST", path, body)
 }
 
-// SendStreaming sends a message using streaming delivery.
-func (c *Client) SendStreaming(to, text string) (map[string]interface{}, error) {
-	body := map[string]interface{}{"to": to, "body": map[string]string{"text": text}}
-	return c.jsonRequest("POST", "/v1/messages/stream", body)
+// StreamStart opens a streaming connection to a remote agent.
+func (c *Client) StreamStart(to string, threadID string) (map[string]interface{}, error) {
+	body := map[string]interface{}{"to": to}
+	if threadID != "" {
+		body["thread_id"] = threadID
+	}
+	return c.jsonRequest("POST", "/v1/stream/start", body)
+}
+
+// StreamChunk sends a text chunk on an open stream.
+func (c *Client) StreamChunk(streamID, text string) (map[string]interface{}, error) {
+	return c.jsonRequest("POST", "/v1/stream/chunk", map[string]string{"stream_id": streamID, "text": text})
+}
+
+// StreamEnd ends a stream, optionally closing the thread.
+func (c *Client) StreamEnd(streamID string, closeThread bool) (map[string]interface{}, error) {
+	body := map[string]interface{}{"stream_id": streamID}
+	if closeThread {
+		body["close_thread"] = true
+	}
+	return c.jsonRequest("POST", "/v1/stream/end", body)
 }
 
 // ── Threads ─────────────────────────────────────────────
