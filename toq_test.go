@@ -3,6 +3,7 @@ package toq
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -324,5 +325,57 @@ func TestStreamEnd(t *testing.T) {
 	}
 	if result["chunk_id"] != "e1" {
 		t.Errorf("expected e1, got %v", result["chunk_id"])
+	}
+}
+
+func TestRevoke(t *testing.T) {
+	var gotPath string
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.WriteHeader(200)
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	err := client.Revoke("ed25519:abc+/123=")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(gotPath, "/revoke") {
+		t.Errorf("expected /revoke in path, got %s", gotPath)
+	}
+}
+
+func TestHistory(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"messages":[{"id":"1","from":"alice","body":{"text":"hi"}}]}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	msgs, err := client.History(HistoryOptions{Limit: 10, From: "alice"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(msgs) != 1 {
+		t.Errorf("expected 1 message, got %d", len(msgs))
+	}
+}
+
+func TestHistoryEmpty(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"messages":[]}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	msgs, err := client.History(HistoryOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(msgs) != 0 {
+		t.Errorf("expected 0 messages, got %d", len(msgs))
 	}
 }

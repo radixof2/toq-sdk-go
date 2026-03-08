@@ -268,6 +268,36 @@ func (c *Client) Deny(id string) error {
 	return c.do2("POST", "/v1/approvals/"+url.PathEscape(id), map[string]string{"decision": "deny"})
 }
 
+func (c *Client) Revoke(id string) error {
+	return c.do("POST", "/v1/approvals/"+url.PathEscape(id)+"/revoke")
+}
+
+// ── History ─────────────────────────────────────────────
+
+type HistoryOptions struct {
+	Limit int
+	From  string
+	Since string
+}
+
+func (c *Client) History(opts HistoryOptions) ([]interface{}, error) {
+	q := url.Values{}
+	if opts.Limit > 0 {
+		q.Set("limit", fmt.Sprintf("%d", opts.Limit))
+	}
+	if opts.From != "" {
+		q.Set("from", opts.From)
+	}
+	if opts.Since != "" {
+		q.Set("since", opts.Since)
+	}
+	path := "/v1/messages/history"
+	if len(q) > 0 {
+		path += "?" + q.Encode()
+	}
+	return c.listField("GET", path, "messages")
+}
+
 // ── Discovery ───────────────────────────────────────────
 
 func (c *Client) Discover(host string) ([]interface{}, error) {
