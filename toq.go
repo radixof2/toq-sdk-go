@@ -252,24 +252,103 @@ func (c *Client) GetThread(threadID string) (map[string]interface{}, error) {
 
 // ── Peers ───────────────────────────────────────────────
 
-func (c *Client) Peers() ([]interface{}, error)    { return c.listField("GET", "/v1/peers", "peers") }
-func (c *Client) Block(publicKey string) error      { return c.do("POST", "/v1/peers/"+url.PathEscape(publicKey)+"/block") }
-func (c *Client) Unblock(publicKey string) error    { return c.do("DELETE", "/v1/peers/"+url.PathEscape(publicKey)+"/block") }
+func (c *Client) Peers() ([]interface{}, error) { return c.listField("GET", "/v1/peers", "peers") }
+
+// BlockByKey blocks an agent by public key.
+func (c *Client) BlockByKey(key string) error {
+	return c.do2("POST", "/v1/block", map[string]string{"key": key})
+}
+
+// BlockByAddress blocks agents matching an address pattern.
+func (c *Client) BlockByAddress(from string) error {
+	return c.do2("POST", "/v1/block", map[string]string{"from": from})
+}
+
+// Block blocks an agent by public key (backward compat).
+func (c *Client) Block(publicKey string) error { return c.BlockByKey(publicKey) }
+
+// UnblockByKey removes a key-based block rule.
+func (c *Client) UnblockByKey(key string) error {
+	return c.doWithBody("DELETE", "/v1/block", map[string]string{"key": key})
+}
+
+// UnblockByAddress removes an address-based block rule.
+func (c *Client) UnblockByAddress(from string) error {
+	return c.doWithBody("DELETE", "/v1/block", map[string]string{"from": from})
+}
+
+// Unblock removes a key-based block rule (backward compat).
+func (c *Client) Unblock(publicKey string) error { return c.UnblockByKey(publicKey) }
 
 // ── Approvals ───────────────────────────────────────────
 
-func (c *Client) Approvals() ([]interface{}, error) { return c.listField("GET", "/v1/approvals", "approvals") }
+func (c *Client) Approvals() ([]interface{}, error) {
+	return c.listField("GET", "/v1/approvals", "approvals")
+}
 
+// Approve approves a pending request by ID (backward compat).
 func (c *Client) Approve(id string) error {
 	return c.do2("POST", "/v1/approvals/"+url.PathEscape(id), map[string]string{"decision": "approve"})
+}
+
+// ApproveByKey adds a key-based approve rule.
+func (c *Client) ApproveByKey(key string) error {
+	return c.do2("POST", "/v1/approve", map[string]string{"key": key})
+}
+
+// ApproveByAddress adds an address-based approve rule.
+func (c *Client) ApproveByAddress(from string) error {
+	return c.do2("POST", "/v1/approve", map[string]string{"from": from})
 }
 
 func (c *Client) Deny(id string) error {
 	return c.do2("POST", "/v1/approvals/"+url.PathEscape(id), map[string]string{"decision": "deny"})
 }
 
+// Revoke removes an approve rule by pending ID (backward compat).
 func (c *Client) Revoke(id string) error {
 	return c.do("POST", "/v1/approvals/"+url.PathEscape(id)+"/revoke")
+}
+
+// RevokeByKey removes a key-based approve rule.
+func (c *Client) RevokeByKey(key string) error {
+	return c.do2("POST", "/v1/revoke", map[string]string{"key": key})
+}
+
+// RevokeByAddress removes an address-based approve rule.
+func (c *Client) RevokeByAddress(from string) error {
+	return c.do2("POST", "/v1/revoke", map[string]string{"from": from})
+}
+
+// ── Permissions ─────────────────────────────────────────
+
+func (c *Client) Permissions() (map[string]interface{}, error) {
+	return c.jsonResult("GET", "/v1/permissions")
+}
+
+// PingResult holds the response from a ping request.
+type PingResult struct {
+	AgentName string `json:"agent_name"`
+	Address   string `json:"address"`
+	PublicKey string `json:"public_key"`
+	Reachable bool   `json:"reachable"`
+}
+
+func (c *Client) Ping(address string) (*PingResult, error) {
+	body, err := json.Marshal(map[string]string{"address": address})
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.httpClient.Post(c.baseURL+"/v1/ping", "application/json", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var result PingResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 // ── History ─────────────────────────────────────────────
@@ -430,6 +509,14 @@ func (c *Client) do2(method, path string, body interface{}) error {
 	}
 	resp.Body.Close()
 	return nil
+}
+
+func (c *Client) doWithBody(method, path string, body interface{}) error {
+	return c.do2(method, path, body)
+}
+
+func (c *Client) jsonResult(method, path string) (map[string]interface{}, error) {
+	return c.jsonRequest(method, path, nil)
 }
 
 func (c *Client) listField(method, path, field string) ([]interface{}, error) {
