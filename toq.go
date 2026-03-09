@@ -339,7 +339,7 @@ func (c *Client) Ping(address string) (*PingResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.httpClient.Post(c.baseURL+"/v1/ping", "application/json", bytes.NewReader(body))
+	resp, err := c.http.Post(c.url+"/v1/ping", "application/json", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
