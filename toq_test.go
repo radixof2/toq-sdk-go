@@ -379,3 +379,76 @@ func TestHistoryEmpty(t *testing.T) {
 		t.Errorf("expected 0 messages, got %d", len(msgs))
 	}
 }
+
+func TestBlockByAddress(t *testing.T) {
+	var gotBody map[string]string
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&gotBody)
+		w.WriteHeader(200)
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	err := client.BlockByAddress("toq://host/*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotBody["from"] != "toq://host/*" {
+		t.Errorf("expected from=toq://host/*, got %v", gotBody)
+	}
+}
+
+func TestApproveByAddress(t *testing.T) {
+	var gotBody map[string]string
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&gotBody)
+		w.WriteHeader(200)
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	err := client.ApproveByAddress("toq://trusted.com/*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotBody["from"] != "toq://trusted.com/*" {
+		t.Errorf("expected from=toq://trusted.com/*, got %v", gotBody)
+	}
+}
+
+func TestPermissions(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"approved":[],"blocked":[]}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	perms, err := client.Permissions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perms["approved"] == nil || perms["blocked"] == nil {
+		t.Error("expected approved and blocked fields")
+	}
+}
+
+func TestPing(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"agent_name":"bob","address":"toq://h/bob","public_key":"k","reachable":true}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.Ping("toq://h/bob")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.AgentName != "bob" {
+		t.Errorf("expected agent_name=bob, got %s", result.AgentName)
+	}
+	if !result.Reachable {
+		t.Error("expected reachable=true")
+	}
+}
