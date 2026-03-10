@@ -453,3 +453,85 @@ func TestPing(t *testing.T) {
 		t.Error("expected reachable=true")
 	}
 }
+
+
+func TestHandlers(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"handlers":[{"name":"h1","command":"echo","enabled":true,"active":0}]}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.Handlers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 {
+		t.Errorf("expected 1 handler, got %d", len(result))
+	}
+}
+
+func TestAddHandler(t *testing.T) {
+	var gotBody map[string]interface{}
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"added","name":"test"}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.AddHandler("test", "echo hi", []string{"toq://host/*"}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["status"] != "added" {
+		t.Errorf("expected added, got %v", result["status"])
+	}
+	if gotBody["name"] != "test" {
+		t.Errorf("expected name=test, got %v", gotBody["name"])
+	}
+}
+
+func TestRemoveHandler(t *testing.T) {
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"removed","name":"test"}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.RemoveHandler("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["status"] != "removed" {
+		t.Errorf("expected removed, got %v", result["status"])
+	}
+}
+
+func TestStopHandler(t *testing.T) {
+	var gotBody map[string]interface{}
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"stopped":2,"name":"test"}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.StopHandler("test", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["stopped"] != float64(2) {
+		t.Errorf("expected stopped=2, got %v", result["stopped"])
+	}
+	if gotBody["name"] != "test" {
+		t.Errorf("expected name=test, got %v", gotBody["name"])
+	}
+}

@@ -160,7 +160,23 @@ func (c *Client) Send(to, text string, opts *SendOptions) (map[string]interface{
 
 // Messages returns a channel of incoming messages via SSE.
 func (c *Client) Messages() (<-chan Message, error) {
-	resp, err := c.request("GET", "/v1/messages", nil)
+	return c.MessagesFiltered("", "")
+}
+
+// MessagesFiltered returns a channel of incoming messages via SSE with optional filters.
+func (c *Client) MessagesFiltered(from, msgType string) (<-chan Message, error) {
+	path := "/v1/messages"
+	q := url.Values{}
+	if from != "" {
+		q.Set("from", from)
+	}
+	if msgType != "" {
+		q.Set("type", msgType)
+	}
+	if len(q) > 0 {
+		path += "?" + q.Encode()
+	}
+	resp, err := c.request("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -483,6 +499,42 @@ func (c *Client) UpdateConfig(updates map[string]interface{}) (map[string]interf
 // ── Agent Card ──────────────────────────────────────────
 
 func (c *Client) Card() (map[string]interface{}, error) { return c.jsonRequest("GET", "/v1/card", nil) }
+
+// ── Handlers ────────────────────────────────────────────
+
+func (c *Client) Handlers() ([]interface{}, error) {
+	return c.listField("GET", "/v1/handlers", "handlers")
+}
+
+func (c *Client) AddHandler(name, command string, filterFrom, filterKey, filterType []string) (map[string]interface{}, error) {
+	body := map[string]interface{}{"name": name, "command": command}
+	if len(filterFrom) > 0 {
+		body["filter_from"] = filterFrom
+	}
+	if len(filterKey) > 0 {
+		body["filter_key"] = filterKey
+	}
+	if len(filterType) > 0 {
+		body["filter_type"] = filterType
+	}
+	return c.jsonRequest("POST", "/v1/handlers", body)
+}
+
+func (c *Client) RemoveHandler(name string) (map[string]interface{}, error) {
+	return c.jsonRequest("DELETE", "/v1/handlers/"+url.PathEscape(name), nil)
+}
+
+func (c *Client) UpdateHandler(name string, updates map[string]interface{}) (map[string]interface{}, error) {
+	return c.jsonRequest("PUT", "/v1/handlers/"+url.PathEscape(name), updates)
+}
+
+func (c *Client) StopHandler(name string, pid *int) (map[string]interface{}, error) {
+	body := map[string]interface{}{"name": name}
+	if pid != nil {
+		body["pid"] = *pid
+	}
+	return c.jsonRequest("POST", "/v1/handlers/stop", body)
+}
 
 // ── Helpers ─────────────────────────────────────────────
 
