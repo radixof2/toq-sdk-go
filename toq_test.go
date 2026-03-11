@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -35,6 +37,21 @@ func TestConnectExplicitOverridesEnv(t *testing.T) {
 	client := Connect("http://explicit:5678")
 	if client.url != "http://explicit:5678" {
 		t.Errorf("expected http://explicit:5678, got %s", client.url)
+	}
+}
+
+func TestConnectWorkspaceState(t *testing.T) {
+	dir := t.TempDir()
+	origDir, _ := os.Getwd()
+	os.MkdirAll(filepath.Join(dir, ".toq"), 0o755)
+	os.WriteFile(filepath.Join(dir, ".toq", "state.json"), []byte(`{"api_port": 9042}`), 0o644)
+	os.Chdir(dir)
+	t.Setenv(URLEnv, "")
+	os.Unsetenv(URLEnv)
+	client := Connect("")
+	os.Chdir(origDir)
+	if client.url != "http://127.0.0.1:9042" {
+		t.Errorf("expected http://127.0.0.1:9042, got %s", client.url)
 	}
 }
 

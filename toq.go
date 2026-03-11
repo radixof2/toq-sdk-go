@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -70,15 +71,31 @@ type SendOptions struct {
 }
 
 // Connect creates a new Client to the local toq daemon.
+//
+// Resolution order:
+//  1. Explicit baseURL parameter
+//  2. TOQ_API_URL environment variable
+//  3. .toq/state.json in current directory (workspace mode)
+//  4. Default http://127.0.0.1:9010
 func Connect(baseURL string) *Client {
 	if baseURL == "" {
 		baseURL = os.Getenv(URLEnv)
 	}
 	if baseURL == "" {
+		if data, err := os.ReadFile(filepath.Join(".toq", "state.json")); err == nil {
+			var state map[string]interface{}
+			if json.Unmarshal(data, &state) == nil {
+				if port, ok := state["api_port"].(float64); ok && port > 0 {
+					baseURL = fmt.Sprintf("http://127.0.0.1:%d", int(port))
+				}
+			}
+		}
+	}
+	if baseURL == "" {
 		baseURL = DefaultURL
 	}
 	return &Client{
-		url: strings.TrimRight(baseURL, "/"),
+		url:  strings.TrimRight(baseURL, "/"),
 		http: &http.Client{Timeout: 60 * time.Second},
 	}
 }
