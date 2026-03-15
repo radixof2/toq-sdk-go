@@ -30,7 +30,7 @@ import (
 
 const (
 	DefaultURL = "http://127.0.0.1:9009"
-	URLEnv     = "TOQ_API_URL"
+	URLEnv     = "TOQ_URL"
 )
 
 // ToqError is returned when the SDK cannot communicate with the daemon.
@@ -74,7 +74,7 @@ type SendOptions struct {
 //
 // Resolution order:
 //  1. Explicit baseURL parameter
-//  2. TOQ_API_URL environment variable
+//  2. TOQ_URL environment variable
 //  3. .toq/state.json in current directory (workspace mode)
 //  4. Default http://127.0.0.1:9009
 func Connect(baseURL string) *Client {
