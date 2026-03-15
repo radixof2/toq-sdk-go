@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	DefaultURL = "http://127.0.0.1:9010"
+	DefaultURL = "http://127.0.0.1:9009"
 	URLEnv     = "TOQ_API_URL"
 )
 
@@ -76,7 +76,7 @@ type SendOptions struct {
 //  1. Explicit baseURL parameter
 //  2. TOQ_API_URL environment variable
 //  3. .toq/state.json in current directory (workspace mode)
-//  4. Default http://127.0.0.1:9010
+//  4. Default http://127.0.0.1:9009
 func Connect(baseURL string) *Client {
 	if baseURL == "" {
 		baseURL = os.Getenv(URLEnv)
@@ -85,7 +85,7 @@ func Connect(baseURL string) *Client {
 		if data, err := os.ReadFile(filepath.Join(".toq", "state.json")); err == nil {
 			var state map[string]interface{}
 			if json.Unmarshal(data, &state) == nil {
-				if port, ok := state["api_port"].(float64); ok && port > 0 {
+				if port, ok := state["port"].(float64); ok && port > 0 {
 					baseURL = fmt.Sprintf("http://127.0.0.1:%d", int(port))
 				}
 			}

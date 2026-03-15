@@ -44,7 +44,7 @@ func TestConnectWorkspaceState(t *testing.T) {
 	dir := t.TempDir()
 	origDir, _ := os.Getwd()
 	os.MkdirAll(filepath.Join(dir, ".toq"), 0o755)
-	os.WriteFile(filepath.Join(dir, ".toq", "state.json"), []byte(`{"api_port": 9042}`), 0o644)
+	os.WriteFile(filepath.Join(dir, ".toq", "state.json"), []byte(`{"port": 9042}`), 0o644)
 	os.Chdir(dir)
 	t.Setenv(URLEnv, "")
 	os.Unsetenv(URLEnv)
