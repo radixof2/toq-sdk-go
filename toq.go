@@ -523,16 +523,61 @@ func (c *Client) Handlers() ([]interface{}, error) {
 	return c.listField("GET", "/v1/handlers", "handlers")
 }
 
-func (c *Client) AddHandler(name, command string, filterFrom, filterKey, filterType []string) (map[string]interface{}, error) {
-	body := map[string]interface{}{"name": name, "command": command}
-	if len(filterFrom) > 0 {
-		body["filter_from"] = filterFrom
+// HandlerOptions configures a message handler.
+type HandlerOptions struct {
+	// Shell command (for shell handlers).
+	Command string
+	// LLM provider: openai, anthropic, bedrock, ollama (for LLM handlers).
+	Provider string
+	// LLM model name (required when Provider is set).
+	Model string
+	// System prompt for LLM handlers.
+	Prompt string
+	// Path to system prompt file.
+	PromptFile string
+	// Max conversation turns before closing the thread.
+	MaxTurns *int
+	// Let the LLM decide when to close the thread.
+	AutoClose bool
+	// Filter by sender address or wildcard (OR logic within type).
+	FilterFrom []string
+	// Filter by sender public key (OR logic within type).
+	FilterKey []string
+	// Filter by message type (OR logic within type).
+	FilterType []string
+}
+
+func (c *Client) AddHandler(name string, opts HandlerOptions) (map[string]interface{}, error) {
+	body := map[string]interface{}{"name": name}
+	if opts.Command != "" {
+		body["command"] = opts.Command
 	}
-	if len(filterKey) > 0 {
-		body["filter_key"] = filterKey
+	if opts.Provider != "" {
+		body["provider"] = opts.Provider
 	}
-	if len(filterType) > 0 {
-		body["filter_type"] = filterType
+	if opts.Model != "" {
+		body["model"] = opts.Model
+	}
+	if opts.Prompt != "" {
+		body["prompt"] = opts.Prompt
+	}
+	if opts.PromptFile != "" {
+		body["prompt_file"] = opts.PromptFile
+	}
+	if opts.MaxTurns != nil {
+		body["max_turns"] = *opts.MaxTurns
+	}
+	if opts.AutoClose {
+		body["auto_close"] = true
+	}
+	if len(opts.FilterFrom) > 0 {
+		body["filter_from"] = opts.FilterFrom
+	}
+	if len(opts.FilterKey) > 0 {
+		body["filter_key"] = opts.FilterKey
+	}
+	if len(opts.FilterType) > 0 {
+		body["filter_type"] = opts.FilterType
 	}
 	return c.jsonRequest("POST", "/v1/handlers", body)
 }
@@ -601,3 +646,6 @@ func (c *Client) listField(method, path, field string) ([]interface{}, error) {
 
 // Bool returns a pointer to a bool value. Useful for SendOptions.Wait.
 func Bool(v bool) *bool { return &v }
+
+// Int returns a pointer to an int value. Useful for HandlerOptions.MaxTurns.
+func Int(v int) *int { return &v }

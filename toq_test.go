@@ -499,7 +499,10 @@ func TestAddHandler(t *testing.T) {
 	defer srv.Close()
 
 	client := Connect(srv.URL)
-	result, err := client.AddHandler("test", "echo hi", []string{"toq://host/*"}, nil, nil)
+	result, err := client.AddHandler("test", HandlerOptions{
+		Command:    "echo hi",
+		FilterFrom: []string{"toq://host/*"},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -508,6 +511,52 @@ func TestAddHandler(t *testing.T) {
 	}
 	if gotBody["name"] != "test" {
 		t.Errorf("expected name=test, got %v", gotBody["name"])
+	}
+	if gotBody["command"] != "echo hi" {
+		t.Errorf("expected command=echo hi, got %v", gotBody["command"])
+	}
+}
+
+func TestAddHandlerLLM(t *testing.T) {
+	var gotBody map[string]interface{}
+	srv := mockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"added","name":"chat"}`))
+	})
+	defer srv.Close()
+
+	client := Connect(srv.URL)
+	result, err := client.AddHandler("chat", HandlerOptions{
+		Provider:  "openai",
+		Model:     "gpt-4o",
+		Prompt:    "You are helpful",
+		MaxTurns:  Int(5),
+		AutoClose: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result["status"] != "added" {
+		t.Errorf("expected added, got %v", result["status"])
+	}
+	if gotBody["provider"] != "openai" {
+		t.Errorf("expected provider=openai, got %v", gotBody["provider"])
+	}
+	if gotBody["model"] != "gpt-4o" {
+		t.Errorf("expected model=gpt-4o, got %v", gotBody["model"])
+	}
+	if gotBody["prompt"] != "You are helpful" {
+		t.Errorf("expected prompt, got %v", gotBody["prompt"])
+	}
+	if gotBody["max_turns"] != float64(5) {
+		t.Errorf("expected max_turns=5, got %v", gotBody["max_turns"])
+	}
+	if gotBody["auto_close"] != true {
+		t.Errorf("expected auto_close=true, got %v", gotBody["auto_close"])
+	}
+	if _, ok := gotBody["command"]; ok {
+		t.Errorf("command should not be set for LLM handlers")
 	}
 }
 
