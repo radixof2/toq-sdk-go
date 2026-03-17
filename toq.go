@@ -76,17 +76,27 @@ type SendOptions struct {
 //  1. Explicit baseURL parameter
 //  2. TOQ_URL environment variable
 //  3. .toq/state.json in current directory (workspace mode)
-//  4. Default http://127.0.0.1:9009
+//  4. ~/.toq/state.json (default workspace)
+//  5. Default http://127.0.0.1:9009
 func Connect(baseURL string) *Client {
 	if baseURL == "" {
 		baseURL = os.Getenv(URLEnv)
 	}
 	if baseURL == "" {
-		if data, err := os.ReadFile(filepath.Join(".toq", "state.json")); err == nil {
-			var state map[string]interface{}
-			if json.Unmarshal(data, &state) == nil {
-				if port, ok := state["port"].(float64); ok && port > 0 {
-					baseURL = fmt.Sprintf("http://127.0.0.1:%d", int(port))
+		paths := []string{
+			filepath.Join(".toq", "state.json"),
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			paths = append(paths, filepath.Join(home, ".toq", "state.json"))
+		}
+		for _, p := range paths {
+			if data, err := os.ReadFile(p); err == nil {
+				var state map[string]interface{}
+				if json.Unmarshal(data, &state) == nil {
+					if port, ok := state["port"].(float64); ok && port > 0 {
+						baseURL = fmt.Sprintf("http://127.0.0.1:%d", int(port))
+						break
+					}
 				}
 			}
 		}
