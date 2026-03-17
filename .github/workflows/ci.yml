@@ -17,9 +17,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.93.1"
-      - run: cargo install --git https://github.com/toqprotocol/toq.git toq-cli
+      - name: Install toq
+        run: curl -sSf https://toq.dev/install.sh | sh && echo "$HOME/.toq/bin" >> $GITHUB_PATH
       - run: go vet ./...
       - run: go test -v ./...
